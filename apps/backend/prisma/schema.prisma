@@ -1,0 +1,101 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  configs SearchConfig[]
+  offers  JobOffer[]
+}
+
+model SearchConfig {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  domain             String
+  specialty          String
+  keywords           String[] @default([])
+  locations          String[] @default([])
+  enabledSources     String[] @default([])
+  regionPriorities   Json     @default("[]")
+  
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  lastCrawlAt        DateTime?
+
+  @@index([userId])
+}
+
+model JobOffer {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title              String
+  company            String
+  location           String
+  source             String   // LinkedIn, Indeed, Apec, etc.
+  url                String   @unique
+  description        String?  @db.Text
+  
+  // Deduplication
+  sourceId           String?  // Original ID from source (e.g., LinkedIn job ID)
+  hashId             String?  @unique // Hash of title+company+location for deduplication
+  isDuplicate        Boolean  @default(false)
+  
+  // AI Validation
+  relevanceScore     Float    @default(0)
+  isRelevant         Boolean  @default(false)
+  aiComment          String?  @db.Text
+  validatedAt        DateTime?
+  
+  // User feedback
+  userComment        String?  @db.Text
+  userOverride       Boolean  @default(false)
+  
+  // Status
+  status             String   @default("pending") // pending, validated, sent, archived
+  sentInEmailAt      DateTime?
+  
+  crawledAt          DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId])
+  @@index([crawledAt])
+  @@index([isRelevant])
+  @@index([status])
+}
+
+model CrawlLog {
+  id                 String   @id @default(cuid())
+  configId           String
+  
+  startedAt          DateTime @default(now())
+  completedAt        DateTime?
+  status             String   @default("running") // running, completed, failed
+  
+  totalFound         Int      @default(0)
+  newOffers          Int      @default(0)
+  duplicates         Int      @default(0)
+  errorMessage       String?  @db.Text
+  
+  logs               String?  @db.Text // JSON stringified logs
+  
+  @@index([configId])
+  @@index([startedAt])
+}

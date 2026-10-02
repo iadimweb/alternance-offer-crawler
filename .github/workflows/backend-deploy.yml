@@ -1,0 +1,78 @@
+name: Backend Deploy to Ikoula
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'apps/backend/**'
+      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check --workspace=apps/backend
+
+      - name: Build backend
+        run: npm run build --workspace=apps/backend
+
+      - name: Deploy to Ikoula
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.IKOULA_SSH_HOST }}
+          username: ${{ secrets.IKOULA_SSH_USER }}
+          key: ${{ secrets.IKOULA_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            echo "Pulling latest code..."
+            cd ${{ secrets.IKOULA_PROJECT_PATH }}
+            git fetch origin
+            git checkout master
+            git pull origin master
+            
+            echo "Installing dependencies..."
+            npm ci
+            
+            echo "Running database migrations..."
+            npm run db:migrate --workspace=apps/backend
+            
+            echo "Building backend..."
+            npm run build --workspace=apps/backend
+            
+            echo "Reloading PM2..."
+            pm2 reload api --update-env || pm2 start npm --name "api" -- --workspace=apps/backend start
+            
+            echo "Deployment successful!"
+
+      - name: Health check
+        run: |
+          sleep 5
+          curl -f ${{ secrets.IKOULA_API_URL }}/api/health || exit 1
+
+      - name: Notify Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "Backend deployment ${{ job.status }}: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}

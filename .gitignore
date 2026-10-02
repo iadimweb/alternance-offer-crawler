@@ -1,0 +1,77 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+.next/
+out/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Temp files
+tmp/
+temp/
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+.env.local.backup
+
+# Testing
+coverage/
+.nyc_output/
+
+# N8N
+.n8n/
+
+# Firebase
+.firebase/
+firebase-debug.log
+
+# Secrets (never commit)
+*.pem
+*.key
+secrets.json
+credentials.json
+
+# Backend specific
+prisma/dev.db
+apps/backend/dist/
+
+# Frontend specific
+apps/frontend/.next/
+apps/frontend/out/
+
+# IDE files
+.vscode/settings.json
+.vscode/launch.json
+.eslintcache
