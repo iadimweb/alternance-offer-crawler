@@ -10,69 +10,63 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  typecheck:
+    name: TypeScript check
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
+      - run: npm ci
+      - run: npx prisma generate --schema apps/backend/prisma/schema.prisma
+      - run: npx tsc --noEmit --project apps/backend/tsconfig.json
 
-      - name: Install dependencies
-        run: npm ci
+  deploy:
+    name: Deploy to Ikoula (PM2)
+    runs-on: ubuntu-latest
+    environment: production
+    needs: typecheck
 
-      - name: Type check
-        run: npm run type-check --workspace=apps/backend
-
-      - name: Build backend
-        run: npm run build --workspace=apps/backend
-
-      - name: Deploy to Ikoula
-        uses: appleboy/ssh-action@master
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.IKOULA_SSH_HOST }}
-          username: ${{ secrets.IKOULA_SSH_USER }}
+          host: ${{ secrets.IKOULA_HOST }}
+          username: ${{ secrets.IKOULA_USER }}
           key: ${{ secrets.IKOULA_SSH_KEY }}
-          port: 22
+          port: ${{ secrets.IKOULA_SSH_PORT || 22 }}
+          script_stop: true
           script: |
-            set -e
-            echo "Pulling latest code..."
-            cd ${{ secrets.IKOULA_PROJECT_PATH }}
-            git fetch origin
-            git checkout master
+            cd /d F:\Github\alternance-offer-crawler
             git pull origin master
-            
-            echo "Installing dependencies..."
-            npm ci
-            
-            echo "Running database migrations..."
-            npm run db:migrate --workspace=apps/backend
-            
-            echo "Building backend..."
-            npm run build --workspace=apps/backend
-            
-            echo "Reloading PM2..."
-            pm2 reload api --update-env || pm2 start npm --name "api" -- --workspace=apps/backend start
-            
-            echo "Deployment successful!"
+            if errorlevel 1 exit /b 1
+            call apps\backend\scripts\deploy.bat
+            if errorlevel 1 exit /b 1
 
       - name: Health check
         run: |
           sleep 5
-          curl -f ${{ secrets.IKOULA_API_URL }}/api/health || exit 1
+          curl -f https://api-alternance.your-domain.com/api/health || exit 1
 
-      - name: Notify Slack
+      - name: Notify Slack (optional)
         if: always()
-        uses: slackapi/slack-github-action@v1
+        uses: slackapi/slack-github-action@v1.24.0
         with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
           payload: |
             {
-              "text": "Backend deployment ${{ job.status }}: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "alternance-offer-crawler backend deploy ${{ job.status }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Backend Deployment* ${{ job.status }}\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View workflow>"
+                  }
+                }
+              ]
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}

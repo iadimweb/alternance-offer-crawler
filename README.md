@@ -119,11 +119,18 @@ See CI/CD setup in `.github/workflows/`
 
 ## Documentation
 
-- [API Documentation](./docs/API.md)
-- [Database Schema](./docs/SCHEMA.md)
-- [N8N Workflows](./n8n/README.md)
-- [Deployment Guide](./docs/DEPLOYMENT.md)
+### 🚀 Getting Started
+- **[Deployment Checklist](./DEPLOYMENT_CHECKLIST.md)** ← **START HERE** for production
+- **[Ikoula Isolated Setup](./docs/IKOULA_ISOLATED_SETUP.md)** ← Step-by-step server configuration
+- **[GitHub Secrets Configuration](./docs/GITHUB_SECRETS.md)** ← Required for CI/CD automation
+
+### 📚 Reference Documentation
+- [API Documentation](./docs/API.md) — All REST endpoints
+- [Database Schema](./docs/SCHEMA.md) — Prisma schema & queries
+- [Local Development Setup](./docs/DEVELOPMENT.md) — Dev environment guide
+- [Deployment Guide](./docs/DEPLOYMENT.md) — General deployment architecture
+- [N8N Workflows](./n8n/README.md) — Crawler & validation workflows
 
 ---
 
-**Project Status**: Setup Phase
+**Project Status**: Ready for deployment (isolated Ikoula infrastructure)
